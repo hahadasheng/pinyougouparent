@@ -1,5 +1,5 @@
  //控制层 
-app.controller('goodsController' ,function($scope, $controller ,goodsService, uploadService, itemCatService, typeTemplateService){
+app.controller('goodsController' ,function($scope, $controller, $location ,goodsService, uploadService, itemCatService, typeTemplateService){
 	
 	$controller('baseController',{$scope:$scope});//继承
 	
@@ -10,7 +10,7 @@ app.controller('goodsController' ,function($scope, $controller ,goodsService, up
 				$scope.list=response;
 			}			
 		);
-	}    
+	};
 	
 	//分页
 	$scope.findPage=function(page,rows){			
@@ -18,36 +18,75 @@ app.controller('goodsController' ,function($scope, $controller ,goodsService, up
 			function(response){
 				$scope.list=response.rows;	
 				$scope.paginationConf.totalItems=response.total;//更新总记录数
-			}			
+			}
 		);
-	}
+	};
 	
 	//查询实体 
-	$scope.findOne=function(id){				
+	$scope.findOne=function(){
+		// 根据页面的跳转，获取angularJs封装的 $location获取哈希路由中的值
+		var id = $location.search()['id'];
+
+		if (id == null || id === undefined) {
+			return;
+		}
+
 		goodsService.findOne(id).success(
 			function(response){
-				$scope.entity= response;					
+				$scope.entity= response;
+
+				// 富文本编辑器
+				editor.html($scope.entity.goodsDesc.introduction);
+
+				// 商品图片
+				$scope.entity.goodsDesc.itemImages =
+					JSON.parse($scope.entity.goodsDesc.itemImages);
+
+				// 显示拓展属性
+				$scope.entity.goodsDesc.customAttributeItems =
+					JSON.parse($scope.entity.goodsDesc.customAttributeItems);
+
+				// SKU 规格列表转换
+				for (var i = 0; i < $scope.entity.itemList.length; i ++) {
+					$scope.entity.itemList[i].spec =
+						JSON.parse($scope.entity.itemList[i].spec);
+				}
 			}
 		);				
-	}
+	};
 	
-	//保存 
-	$scope.add=function(){
+	//保存
+	$scope.save=function(){
 		// 获取富文本编辑器中的内容！
 		$scope.entity.goodsDesc.introduction = editor.html();
-        goodsService.add( $scope.entity  ).success(
+
+		// 服务层对象
+		var serviceObject;
+
+		if ($scope.entity.goods.id != null) {
+			// 有id为修改方法
+            serviceObject = goodsService.update( $scope.entity);
+		} else {
+			// 添加商品
+            serviceObject = goodsService.add( $scope.entity);
+        }
+        serviceObject.success(
 			function(response){
 				if(response.success){
-					//重新查询 
-		        	alert("保存成功!");
-					$scope.entity = {};
-					// 清空富文本编辑器
-					editor.html("");
+					//重新查询
+                    if ($scope.entity.goods.id != null) {
+                        alert("修改成功!");
+					} else {
+                        alert("添加成功!");
+					}
+
+					// 跳转到商品列表页
+					location.href = "goods.html";
 				}else{
 					alert(response.message);
 				}
-			}		
-		);				
+			}
+		);
 	};
 	
 	 
@@ -150,11 +189,21 @@ app.controller('goodsController' ,function($scope, $controller ,goodsService, up
 				$scope.typeTemplate = response;
 
 				// 后台传递的字符串转换为JSON  渲染品牌列表
-				$scope.typeTemplate.brandIds = JSON.parse($scope.typeTemplate.brandIds)
+				$scope.typeTemplate.brandIds = JSON.parse($scope.typeTemplate.brandIds);
 
 				// 将模板中的扩展属性渲染到商品的扩展属性！
-				$scope.entity.goodsDesc.customAttributeItems =
-					JSON.parse($scope.typeTemplate.customAttributeItems)
+				// 确定是新增时执行，在修改时要防止此语句覆盖从后台读取的数据
+				if ($location.search()["id"] === undefined || $location.search()["id"] == null ) {
+                    $scope.entity.goodsDesc.customAttributeItems =
+                        JSON.parse($scope.typeTemplate.customAttributeItems);
+				}
+
+				// 将规格反序列化成json对象
+				$scope.entity.goodsDesc.specificationItems =
+					JSON.parse($scope.entity.goodsDesc.specificationItems);
+
+				//
+
             })
 		}
 
@@ -201,10 +250,115 @@ app.controller('goodsController' ,function($scope, $controller ,goodsService, up
 			)
 		}
 
+    };
+
+	// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+	// @@@@@@@@@@@@@@@@@@@@@@@@                              @@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+	// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ 【归零滚雪球思想】  @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+	// @@@@@@@@@@@@@@@@@@@@@@@@                              @@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+	// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+	/*
+		启动时初始化 itemList sku列表；[{spec:{}, price: 0, num: 0, status:"0", isDefault:"0"}]
+		遍历 items 属性列表，例如 [{"attributeName":"网络","attributeValue":["移动3G", "移动4G", "联通3G"]},{"attributeName":"机身内存","attributeValue":["16G"]}]
+	    每遍历一个 item；遍历 itemList 列表，深克隆当前元素，遍历item下的attributeValue 列表，
+	    向深克隆的列表spec属性中添加 attributeName：attributeValue
+
+	*/
+    // 创建SKU列表【难点】 @@@###@@@###@@@###@@@###@@@###@@@###@@@###@@@###@@@###@@@###@@@###
+	$scope.createItemList = function () {
+		/*  【！！初始重置SKU数据结构: @@@注意，每一次 启动都 会将 $scope.entity.itemList 清空重置！
+		    然后根据 items 进行重新计算！这样可以避免重复！@@】
+
+		    重置列表：[{spec:{}, price: 0, num: 0, status:"0", isDefault:"0"}]  */
+
+		$scope.entity.itemList = [{spec:{}, price: 0, num: 0, status:"0", isDefault:"0"}];
+
+		/* 属性选项表 items
+		   [{"attributeName":"网络","attributeValue":["移动3G", "移动4G", "联通3G"]},
+		    {"attributeName":"机身内存","attributeValue":["16G"]}
+		   ]
+		*/
+		var items = $scope.entity.goodsDesc.specificationItems;
+
+		/* 循环遍历 items 每遍历一个节点，创建该节点 */
+		for (var i = 0; i < items.length; i ++) {
+            $scope.entity.itemList = addColumn(
+                $scope.entity.itemList, items[i].attributeName, items[i].attributeValue
+			)
+		}
+	};
+
+	/* 向列表中添加列值 {"attributeName":name,"attributeValue":[value]});
+			columnName                columnValues
+	 [ {"attributeName":"网络","attributeValue":["移动3G", "移动4G" "联通3G"}]
+
+	 list: [
+	       {spec:{"网络": "移动3G", "机身内存": "16G"}, price: 0, num: 0, status:"0", isDefault:"0"},
+	       {spec:{"网络": "移动3G", "机身内存": "32G"}, price: 0, num: 0, status:"0", isDefault:"0"},
+	       {spec:{"网络": "移动4G", "机身内存": "16G"}, price: 0, num: 0, status:"0", isDefault:"0"},
+	       {spec:{"网络": "移动4G", "机身内存": "32G"}, price: 0, num: 0, status:"0", isDefault:"0"},
+	       {spec:{"网络": "联通3G", "机身内存": "16G"}, price: 0, num: 0, status:"0", isDefault:"0"},
+	       {spec:{"网络": "联通3G", "机身内存": "32G"}, price: 0, num: 0, status:"0", isDefault:"0"},
+	 ]
+	 */
+	addColumn = function (list, columnName, columnValues) {
+		// 新的集合
+		var newList = [];
+
+		for (var i = 0; i < list.length; i ++) {
+			var oldRow = list[i];
+
+			for (var j = 0; j < columnValues.length; j ++) {
+				// 深克隆； 将对象转换为字符串 然后再转换为 对象，就是一个新的 内容
+				// 一模一样的对象了
+				var newRow = JSON.parse(JSON.stringify(oldRow));
+				newRow.spec[columnName] = columnValues[j];
+				newList.push(newRow);
+			}
+		}
+		return newList;
+    };
+
+    // @@@###@@@###@@@###@@@###@@@###@@@###@@@###@@@###@@@###@@@###@@@###
+    // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+    // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+    // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+    // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+    // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+	// 补充 ；<input ng-model="pojo.status" ng-true-value="1" ng-false-value="1" type="checkbox" > 设置选中值！
+
+	// 商品状态对应值
+	$scope.status=['未审核', '已审核', '审核未通过', '关闭'];
+
+	// 显示分类名称的方案
+	/*
+	方案1：在后端代码中写关联查询，返回的数据中直接有分类名称；效率低
+	方案2：分类列表的数据量很小，可以将数据全部拿到，存到前端，以id为key,name为value的形式进行存储；
+	*/
+    $scope.itemCatList = {};
+	$scope.findItemCatList = function () {
+		itemCatService.findAll().success(function (response) {
+			for (var i = 0; i <response.length; i++) {
+				$scope.itemCatList[response["" + i].id] = response["" + i].name;
+			}
+        })
+    };
+
+    // 根据规格名称和选项名称返回是否被勾选 ng-checked属性，布尔值，判断
+	$scope.checkAttributeValue = function (specName, optionName) {
+		var items = $scope.entity.goodsDesc.specificationItems;
+
+		var object = $scope.searchObjectByKey(items, 'attributeName', specName);
+		if (object === null) {
+			return false;
+		} else {
+			if (object.attributeValue.indexOf(optionName) >= 0) {
+				return true;
+			} else {
+				return false;
+			}
+		}
     }
-	
 
 
-
-    
 });	
