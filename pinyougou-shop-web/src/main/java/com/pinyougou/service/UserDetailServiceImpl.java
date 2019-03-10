@@ -15,10 +15,8 @@ import java.util.List;
 public class UserDetailServiceImpl implements UserDetailsService {
 
     /**
-     controller包下的Controller配置了dubbox服务
-     此包没有配置，直接使用 @Reference 是无法生成 代理对象，
-     由于此类特殊，可以使用 set 注入方法配合 dubbox 进行远程配置注入
-     可以在spring-security.xml为此类配置一个 dubbox 服务 ！
+     由于此类特殊，是spring Security框架中使用的，需要为此框架配置 dubbox服务
+     可以使用 set 注入方法配合 dubbox 进行远程配置注入
      */
     private SellerService sellerService;
 

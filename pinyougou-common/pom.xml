@@ -14,6 +14,7 @@
     <packaging>jar</packaging>
 
     <dependencies>
+        <!-- fastDFS分布式文件上传服务 -->
         <dependency>
             <groupId>org.csource.fastdfs</groupId>
             <artifactId>fastdfs</artifactId>
@@ -21,6 +22,18 @@
         <dependency>
             <groupId>commons-fileupload</groupId>
             <artifactId>commons-fileupload</artifactId>
+        </dependency>
+
+        <!-- Jedis 和 SpringDataRedis依赖 -->
+        <dependency>
+            <groupId>redis.clients</groupId>
+            <artifactId>jedis</artifactId>
+            <version>2.8.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.data</groupId>
+            <artifactId>spring-data-redis</artifactId>
+            <version>1.7.2.RELEASE</version>
         </dependency>
     </dependencies>
 

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:p="http://www.springframework.org/schema/p"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:dubbo="http://code.alibabatech.com/schema/dubbo" xmlns:mvc="http://www.springframework.org/schema/mvc"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc.xsd
+        http://code.alibabatech.com/schema/dubbo http://code.alibabatech.com/schema/dubbo/dubbo.xsd
+        http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd">
+
+	<!-- 加载配置文件 -->
+	<context:property-placeholder location="classpath*:properties/*.properties"/>
+
+	<!-- redis相关配置 -->
+	<!-- redis连接池 maxIdle 最大连接数 maxWaitMillis 最大等待时间
+	testOnBorrow 在提取一个jedis实例时，是否提前进行验证操作：如果为true，得到的jedis实例均可用-->
+	<bean id="poolConfig" class="redis.clients.jedis.JedisPoolConfig">
+		<property name="maxIdle" value="${redis.maxIdle}"/>
+		<property name="maxWaitMillis" value="${redis.maxWait}"/>
+		<property name="testOnBorrow" value="${redis.testOnBorrow}"/>
+	</bean>
+
+	<!-- Spring Data Redis 框架封装的 工厂类
+	 p 标签是 p命名空间，效果相当于在 标签体中配置 property 属性！-->
+	<bean id="jedisConnectionFactory"
+		  class="org.springframework.data.redis.connection.jedis.JedisConnectionFactory"
+		  p:hostName="${redis.host}"
+		  p:port="${redis.port}"
+		  p:password="${redis.pass}"
+		  p:pool-config-ref="poolConfig"/>
+
+
+	<!-- 配置操作类：开发中使用的bean -->
+	<bean id="redisTemplate" class="org.springframework.data.redis.core.RedisTemplate">
+		<property name="connectionFactory" ref="jedisConnectionFactory"/>
+	</bean>
+
+</beans>
