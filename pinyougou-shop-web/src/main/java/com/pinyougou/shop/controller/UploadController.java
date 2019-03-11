@@ -27,7 +27,7 @@ public class UploadController {
             // 3. 执行上传处理
             String path = fastDFSClient.uploadFile(file.getBytes(), extName);
 
-            // 4. 拼接返回的url喝ip地址，拼装成完整的url
+            // 4. 拼接返回的url和ip地址，拼装成完整的url
             String url = FILE_SERVER_URL + path;
             return new Result(true, url);
 
