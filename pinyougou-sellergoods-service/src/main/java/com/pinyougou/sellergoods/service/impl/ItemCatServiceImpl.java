@@ -13,6 +13,7 @@ import com.pinyougou.pojo.TbItemCatExample.Criteria;
 import com.pinyougou.sellergoods.service.ItemCatService;
 
 import entity.PageResult;
+import org.springframework.data.redis.core.RedisTemplate;
 
 /**
  * 服务实现层
@@ -24,6 +25,9 @@ public class ItemCatServiceImpl implements ItemCatService {
 
 	@Autowired
 	private TbItemCatMapper itemCatMapper;
+
+	@Autowired
+	private RedisTemplate redisTemplate;
 	
 	/**
 	 * 查询全部
@@ -122,14 +126,32 @@ public class ItemCatServiceImpl implements ItemCatService {
 		return new PageResult(page.getTotal(), page.getResult());
 	}
 
-	/** 查询商品分类，不用分页 */
+	/** 查询商品分类，不用分页
+	 *  后台运营商在对 商品分类 进行 增删改 后
+	 *  都会调用此方法重新查询列表，可以将redis更新
+	 *  的逻辑写到这个里面！
+	 *
+	 * */
 	@Override
 	public List<TbItemCat> findByParentId(Long parentId) {
 		TbItemCatExample examp = new TbItemCatExample();
 		Criteria criteria = examp.createCriteria();
 		criteria.andParentIdEqualTo(parentId);
-		List<TbItemCat> tbItemCats = itemCatMapper.selectByExample(examp);
-		return tbItemCats;
+
+		// 跟新缓存
+		saveToRedis();
+
+		return itemCatMapper.selectByExample(examp);
+	}
+
+	/** 缓存处理 */
+	private void saveToRedis() {
+		// 一次性读取缓存进行存储
+		List<TbItemCat> list = findAll();
+		for (TbItemCat itemCat : list) {
+			redisTemplate.boundHashOps("itemCat").put(itemCat.getName(), itemCat.getTypeId());
+		}
+		System.out.println("更新缓存：商品分类表!");
 	}
 
 }

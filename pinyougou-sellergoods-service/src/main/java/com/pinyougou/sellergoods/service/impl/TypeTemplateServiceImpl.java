@@ -17,6 +17,7 @@ import com.pinyougou.pojo.TbTypeTemplateExample.Criteria;
 import com.pinyougou.sellergoods.service.TypeTemplateService;
 
 import entity.PageResult;
+import org.springframework.data.redis.core.RedisTemplate;
 
 /**
  * 服务实现层
@@ -32,8 +33,11 @@ public class TypeTemplateServiceImpl implements TypeTemplateService {
 	@Autowired
 	private TbSpecificationOptionMapper specificationOptionMapper;
 
+	@Autowired
+	private RedisTemplate redisTemplate;
+
 	/**
-	 * 查询全部
+	 * 查询全部, 下拉框
 	 */
 	@Override
 	public List<Map> findAll() {
@@ -87,8 +91,8 @@ public class TypeTemplateServiceImpl implements TypeTemplateService {
 		}		
 	}
 	
-	
-		@Override
+	/** 缓存 */
+	@Override
 	public PageResult findPage(TbTypeTemplate typeTemplate, int pageNum, int pageSize) {
 		PageHelper.startPage(pageNum, pageSize);
 		
@@ -111,7 +115,11 @@ public class TypeTemplateServiceImpl implements TypeTemplateService {
 	
 		}
 		
-		Page<TbTypeTemplate> page= (Page<TbTypeTemplate>)typeTemplateMapper.selectByExample(example);		
+		Page<TbTypeTemplate> page= (Page<TbTypeTemplate>)typeTemplateMapper.selectByExample(example);
+
+		/** 将数据存入缓存 */
+		saveToRedis ();
+
 		return new PageResult(page.getTotal(), page.getResult());
 	}
 
@@ -136,5 +144,34 @@ public class TypeTemplateServiceImpl implements TypeTemplateService {
 		}
 		return list;
 	}
+
+	/** 将模板信息全部查询出来 */
+	public List<TbTypeTemplate> findAllForRedis() {
+		return typeTemplateMapper.selectByExample(null);
+	}
+
+	/** 将数据存入缓存 */
+	private void saveToRedis () {
+
+		// 获取模板数据
+		List<TbTypeTemplate> typeTemplateList = findAllForRedis();
+
+		// 循环模板
+		for (TbTypeTemplate typeTemplate : typeTemplateList) {
+			// 存储品牌列表
+			List<Map> brandList = JSON.parseArray(typeTemplate.getBrandIds(), Map.class);
+			redisTemplate.boundHashOps("brandList").put(typeTemplate.getId(),brandList);
+
+			// 存储规格列表
+			// 根据id查询规格列表
+			List<Map> specList = findSpecList(typeTemplate.getId());
+			redisTemplate.boundHashOps("specList").put(typeTemplate.getId(),specList);
+		}
+        System.out.println("更新缓存：品牌列表！");
+        System.out.println("更新缓存                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              ：规格列表！");
+
+
+	}
+
 
 }
