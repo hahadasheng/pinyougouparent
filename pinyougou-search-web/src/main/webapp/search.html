@@ -18,7 +18,7 @@
 
 </head>
 
-<body ng-app="pinyougou" ng-controller="searchController">
+<body ng-app="pinyougou" ng-controller="searchController" ng-init="loadkeywords()">
 	<!-- 头部栏位 -->
 	<!--页面顶部-->
 	<div id="nav-bottom">
@@ -162,6 +162,9 @@
 				<li class="tag" ng-click="removeSearchItem('price')" ng-if="searchMap.price != ''">
 					价格: {{searchMap.price}}<i class="sui-icon icon-tb-close"></i>
 				</li>
+				<li>
+					搜索结果：{{resultMap.total}}条记录
+				</li>
 			</ul>
 		</div>
 		<!--selector-->
@@ -175,7 +178,7 @@
 				</div>
 				<div class="fl ext"></div>
 			</div>
-			<div class="type-wrap logo" ng-if="resultMap.brandList != null && searchMap.brand == ''">
+			<div class="type-wrap logo" ng-if="resultMap.brandList != null && searchMap.brand == '' && keywordsContainBrand() == false">
 				<div class="fl key brand">品牌</div>
 				<div class="value logos">
 					<ul class="logo-list">
@@ -262,19 +265,22 @@
 				<div class="navbar-inner filter">
 					<ul class="sui-nav">
 						<li class="active">
-							<a href="#">综合</a>
+							<a href="#" ng-click="sortSearch('','')">综合</a>
 						</li>
 						<li>
 							<a href="#">销量</a>
 						</li>
 						<li>
-							<a href="#">新品</a>
+							<a href="#" ng-click="sortSearch('updatetime','DESC')">新品</a>
 						</li>
 						<li>
 							<a href="#">评价</a>
 						</li>
 						<li>
-							<a href="#">价格</a>
+							<a href="#" ng-click="sortSearch('price','ASC')">价格<span style="color: red"> ↑</span></a>
+						</li>
+						<li>
+							<a href="#" ng-click="sortSearch('price','DESC')">价格<span style="color: red"> ↓</span></a>
 						</li>
 					</ul>
 				</div>
@@ -313,32 +319,22 @@
 				<div class="sui-pagination pagination-large">
 					<ul>
 						<li class="prev disabled">
-							<a href="#">«上一页</a>
+							<a disabled="{{searchMap.pageNo - 1 <= 0}}" href="javascript:" ng-click="queryByPage(searchMap.pageNo - 1)">«上一页</a>
 						</li>
-						<li class="active">
-							<a href="#">1</a>
+						<li ng-if="firstPage > 1" class="dotted"><span>...</span></li>
+						<li ng-repeat="p in pageLable" class="{{p == searchMap.pageNo?'active':''}}">
+							<a href="javascript:" ng-click="queryByPage(p)">{{p}}</a>
 						</li>
-						<li>
-							<a href="#">2</a>
-						</li>
-						<li>
-							<a href="#">3</a>
-						</li>
-						<li>
-							<a href="#">4</a>
-						</li>
-						<li>
-							<a href="#">5</a>
-						</li>
-						<li class="dotted"><span>...</span></li>
+						<li ng-if="lastPage < maxPageNo" class="dotted"><span>...</span></li>
 						<li class="next">
-							<a href="#">下一页»</a>
+							<a disabled="{{searchMap.pageNo + 1 >= maxPageNo}}"  href="javascript:" ng-click="queryByPage(searchMap.pageNo + 1)">下一页»</a>
 						</li>
 					</ul>
-					<div><span>共10页&nbsp;</span><span>
-  到第
-  <input type="text" class="page-num">
-  页 <button class="page-confirm" onclick="alert(1)">确定</button></span></div>
+					<div>
+						<span>共{{resultMap.totalPages}}页&nbsp;</span><span>
+  						到第<input type="text" class="page-num" ng-model="inputPage">页
+						<button class="page-confirm" ng-click="queryByPage(inputPage)">确定</button></span>
+					</div>
 				</div>
 			</div>
 		</div>

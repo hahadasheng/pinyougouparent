@@ -5,6 +5,7 @@ import com.pinyougou.pojo.TbItem;
 import com.pinyougou.search.service.ItemSearchService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.solr.core.SolrTemplate;
 import org.springframework.data.solr.core.query.*;
@@ -29,6 +30,10 @@ public class ItemSearchServiceImpl implements ItemSearchService {
     /** 搜索 */
     @Override
     public Map<String, Object> search(Map searchMap) {
+        // 去掉关键字的空格
+        String keywords = (String)searchMap.get("keywords");
+        searchMap.put("keywords", keywords.replace(" ", ""));
+
         Map<String, Object> map = new HashMap<>();
 
         // 1. 按照关键字查询(高亮显示)
@@ -52,6 +57,28 @@ public class ItemSearchServiceImpl implements ItemSearchService {
         return map;
     }
 
+    /**
+     * 向solr中导入数据
+     */
+    @Override
+    public void importList(List list) {
+        solrTemplate.saveBeans(list);
+        solrTemplate.commit();
+    }
+
+    /**
+     * 在solr中删除数据
+     */
+    @Override
+    public void deleteByGoodsIds(List goodsIdList) {
+        System.out.println("删除商品ID" + goodsIdList);
+        Query query = new SimpleQuery();
+        Criteria criteria = new Criteria("item_goodsid").in(goodsIdList);
+        query.addCriteria(criteria);
+        solrTemplate.delete(query);
+        solrTemplate.commit();
+    }
+
     /** 【很繁琐】按照关键字查询 复制域item_keywords 并 高亮显示 标题域item_title */
     private Map searchList (Map searchMap) {
 
@@ -66,9 +93,11 @@ public class ItemSearchServiceImpl implements ItemSearchService {
                 .is(searchMap.get("keywords"));
         query.addCriteria(criteria);
 
-        // ~~~~~~~~~~~~~~~ 按照条件进行删选过滤 ~~~~~~~~~~~~~~~~~~~
+        /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        ~~~~~~~~~~~~~~~ 按照条件进行删选过滤 ~~~~~~~~~~~~~~~~~~~
+        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-        // a. 根据 分类 进行过滤
+        // 【a.】 根据 分类 进行过滤
         if (!"".equals(searchMap.get("category"))) {
 
             Criteria filterCriteria =  new Criteria("item_category").is(searchMap.get("category"));
@@ -76,7 +105,7 @@ public class ItemSearchServiceImpl implements ItemSearchService {
             query.addFilterQuery(filterQuery);
         }
 
-        // b. 根据 品牌 进行过滤
+        // 【b.】 根据 品牌 进行过滤
         if (!"".equals(searchMap.get("brand"))) {
 
             Criteria filterCriteria =  new Criteria("item_brand").is(searchMap.get("brand"));
@@ -84,7 +113,7 @@ public class ItemSearchServiceImpl implements ItemSearchService {
             query.addFilterQuery(filterQuery);
         }
 
-        // c. 根据 规格 进行过滤, 有多个规格，需要遍历操作！
+        // 【c.】 根据 规格 进行过滤, 有多个规格，需要遍历操作！
         if (searchMap.get("spec") != null) {
             Map<String, String> specMap = (Map)(searchMap.get("spec"));
 
@@ -95,7 +124,7 @@ public class ItemSearchServiceImpl implements ItemSearchService {
             }
         }
 
-        // d. 根据价格进行过滤，尽量让搜索结果多
+        // 【d.】 根据价格进行过滤，尽量让搜索结果多
         if (!"".equals(searchMap.get("price"))) {
             String[] price = ((String)searchMap.get("price")).split("-");
             if (!"0".equals(price[0])) {
@@ -110,7 +139,54 @@ public class ItemSearchServiceImpl implements ItemSearchService {
             }
         }
 
-        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        // 【e.】 分页查询 需要提高容错性
+        // 提取页码
+        Integer pageNo = (Integer) searchMap.get("pageNo");
+        if (pageNo == null || pageNo <= 0) {
+            pageNo = 1;
+        }
+
+        // 每页记录数，根据前端排版美观的角度设计
+        Integer pageSize = (Integer) searchMap.get("pageSize");
+        if (pageSize == null || pageSize <= 0) {
+            pageSize = 20;
+        }
+
+        // 根据查询的页数与每页显示条数计算开始索引
+        query.setOffset((pageNo - 1) * pageSize);
+        query.setRows(pageSize);
+
+
+        /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        ~~~~~~~~~~~~~~~~~~~~  排序处理  ~~~~~~~~~~~~~~~~~~~~~
+        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+        // 【a、】获取前端传入的排序规则 ASC DESC; 排序的字段【价格/跟新时间...】
+        String sortValue = (String) searchMap.get("sort");
+        String sortField = (String) searchMap.get("sortField");
+
+        if (sortValue != null && !"".equals(sortValue) && sortField != null && !"".equals(sortField)) {
+            if (sortValue.equals("ASC")) {
+                // 升序排序， 第一个参数是枚举类型；第二个为被排序的域
+                Sort sort = new Sort(Sort.Direction.ASC, "item_" + sortField);
+                query.addSort(sort);
+            }
+
+            if (sortValue.equals("DESC")) {
+                // 升序排序， 第一个参数是枚举类型；第二个为被排序的域
+                Sort sort = new Sort(Sort.Direction.DESC, "item_" + sortField);
+                query.addSort(sort);
+            }
+        }
+
+
+
+
+
+
+        /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+
 
         // 3. 设置高亮的域，可能有很多个域。可以通过链式编程添加域
         HighlightOptions highlightOptions = new HighlightOptions().addField("item_title");
@@ -156,6 +232,10 @@ public class ItemSearchServiceImpl implements ItemSearchService {
         }
 
         map.put("rows", page.getContent());
+        // 返回总页数
+        map.put("totalPages", page.getTotalPages());
+        // 返回总记录数
+        map.put("total", page.getTotalElements());
         return map;
     }
 

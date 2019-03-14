@@ -1,7 +1,11 @@
 package com.pinyougou.manager.controller;
+import java.util.Arrays;
 import java.util.List;
 
+import com.pinyougou.page.service.ItemPageService;
+import com.pinyougou.pojo.TbItem;
 import com.pinyougou.pojogroup.Goods;
+import com.pinyougou.search.service.ItemSearchService;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -22,6 +26,12 @@ public class GoodsController {
 
 	@Reference
 	private GoodsService goodsService;
+
+	@Reference
+	private ItemSearchService itemSearchService;
+
+	@Reference(timeout = 4000)
+	private ItemPageService itemPageService;
 	
 	/**
 	 * 返回全部列表
@@ -93,7 +103,9 @@ public class GoodsController {
 	public Result delete(Long [] ids){
 		try {
 			goodsService.delete(ids);
-			return new Result(true, "删除成功"); 
+			// 删除solr中的数据
+			itemSearchService.deleteByGoodsIds(Arrays.asList(ids));
+			return new Result(true, "删除成功");
 		} catch (Exception e) {
 			e.printStackTrace();
 			return new Result(false, "删除失败");
@@ -118,11 +130,40 @@ public class GoodsController {
 
 		try {
 			goodsService.updateStatus(ids, status);
+
+			// 按照SPU ID 查询 SKU列表，(状态为1)
+			if ("1".equals(status)) {
+				// 审核通过
+				List<TbItem> itemList = goodsService.findItemListByGoodsIdAndStatus(ids, status);
+
+				// 调用搜索接口实现数据批量导入
+				if (itemList.size() > 0) {
+					itemSearchService.importList(itemList);
+				} else {
+					System.out.println("没有明确数据");
+				}
+			}
+
+
 			return new Result(true, "成功");
 		} catch (Exception e) {
 			e.printStackTrace();
 			return new Result(false, "失败");
 		}
 	}
-	
+
+	/**
+	 * 静态生成页 (测试)
+	 */
+	@RequestMapping("/genHtml")
+	public String genHtml(Long goodsId) {
+        boolean flag = itemPageService.genIteHtml(goodsId);
+
+        if (flag) {
+            return "200 generate success!";
+        } else {
+            return "500 generate failure!";
+        }
+	}
+
 }

@@ -1,6 +1,8 @@
 package com.pinyougou.manager.controller;
+import java.util.ArrayList;
 import java.util.List;
 
+import com.pinyougou.pojogroup.ItemCatRecursion;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -115,5 +117,41 @@ public class ItemCatController {
 	public List<TbItemCat> findByParentId(Long parentId) {
 		return itemCatService.findByParentId(parentId);
 	}
-	
+
+	/** 【练习】递归查询 item_cat 数结构表  */
+	@RequestMapping("/findAllRecursion")
+	public ItemCatRecursion findAllRecursion(Long id) {
+
+		ItemCatRecursion god = new ItemCatRecursion();
+		god.setChildern(findAllChildren(id));
+		return god;
+	}
+
+	private List<ItemCatRecursion> findAllChildren(Long parentId) {
+
+		// 获取所有的子节点
+		List<TbItemCat> byParentId = itemCatService.findByParentId(parentId);
+
+		// 递归结束条件
+		if (byParentId.size() == 0) {
+			return null;
+		}
+
+		// 封装子节点
+		List<ItemCatRecursion> childrenItems = new ArrayList<>();
+
+		// 遍历每一个子节点
+		for (TbItemCat itemCat : byParentId) {
+
+			// 创建当前子节点的对象容器
+			ItemCatRecursion itemCatRecursion = new ItemCatRecursion();
+
+			// 【递归】查询当前子节点对象 下面的 子节点
+			itemCatRecursion.setChildern(findAllChildren(itemCat.getId()));
+
+			childrenItems.add(itemCatRecursion);
+		}
+
+		return childrenItems;
+	}
 }

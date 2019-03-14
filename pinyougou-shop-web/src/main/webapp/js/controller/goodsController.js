@@ -215,6 +215,9 @@ app.controller('goodsController' ,function($scope, $controller, $location ,goods
 		};
     });
 
+
+
+
 	/* 集合列表勾选对应的增删改！
 	   $scope.entity.goodsDesc.specificationItems 对应大的 list  格式如下
 	   [ {"attributeName":"网络制式","attributeValue":["移动3G","移动4G"]}, -- 大集合中的一个小对象为一个 object
