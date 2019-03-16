@@ -2,10 +2,12 @@ package com.pinyougou.manager.controller;
 import java.util.Arrays;
 import java.util.List;
 
-import com.pinyougou.page.service.ItemPageService;
+import com.alibaba.fastjson.JSON;
 import com.pinyougou.pojo.TbItem;
 import com.pinyougou.pojogroup.Goods;
-import com.pinyougou.search.service.ItemSearchService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jms.core.JmsTemplate;
+import org.springframework.jms.core.MessageCreator;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -15,6 +17,12 @@ import com.pinyougou.sellergoods.service.GoodsService;
 
 import entity.PageResult;
 import entity.Result;
+
+import javax.jms.Destination;
+import javax.jms.JMSException;
+import javax.jms.Message;
+import javax.jms.Session;
+
 /**
  * controller
  * @author Administrator
@@ -27,11 +35,26 @@ public class GoodsController {
 	@Reference
 	private GoodsService goodsService;
 
-	@Reference
-	private ItemSearchService itemSearchService;
+	/** 发送solr导入的消息 */
+	@Autowired
+	private Destination queueSolrDestination;
 
-	@Reference(timeout = 4000)
-	private ItemPageService itemPageService;
+	/** 发送solr删除的消息 */
+	@Autowired
+	private Destination queueSolrDeleteDestination;
+
+	/** 页面生成的 topic */
+	@Autowired
+	private Destination topicPageDestination;
+
+	/** 页面删除的 topic */
+	@Autowired
+	private Destination topicPageDeleteDestination;
+
+	/** spring 发送消息的工具模板 */
+	@Autowired
+	private JmsTemplate jmsTemplate;
+
 	
 	/**
 	 * 返回全部列表
@@ -100,11 +123,29 @@ public class GoodsController {
 	 * @return
 	 */
 	@RequestMapping("/delete")
-	public Result delete(Long [] ids){
+	public Result delete(final Long [] ids){
 		try {
 			goodsService.delete(ids);
 			// 删除solr中的数据
-			itemSearchService.deleteByGoodsIds(Arrays.asList(ids));
+			jmsTemplate.send(queueSolrDeleteDestination,
+					new MessageCreator() {
+						@Override
+						public Message createMessage(Session session) throws JMSException {
+							return session.createObjectMessage(ids);
+						}
+					});
+
+
+			// 删除页面的服务的静态化页面
+			jmsTemplate.send(topicPageDeleteDestination,
+					new MessageCreator() {
+						@Override
+						public Message createMessage(Session session) throws JMSException {
+							return session.createObjectMessage(ids);
+						}
+					});
+
+
 			return new Result(true, "删除成功");
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -112,7 +153,7 @@ public class GoodsController {
 		}
 	}
 	
-		/**
+	 /**
 	 * 查询+分页
 	 * @param
 	 * @param page
@@ -136,11 +177,33 @@ public class GoodsController {
 				// 审核通过
 				List<TbItem> itemList = goodsService.findItemListByGoodsIdAndStatus(ids, status);
 
-				// 调用搜索接口实现数据批量导入
+				/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+				// *** 调用 ActiveMQ消息队列 实现数据批量导入到 solr
 				if (itemList.size() > 0) {
-					itemSearchService.importList(itemList);
+					final String jsonString = JSON.toJSONString(itemList);
+					jmsTemplate.send(queueSolrDestination, new MessageCreator() {
+						@Override
+						public Message createMessage(Session session) throws JMSException {
+							return session.createTextMessage(jsonString);
+						}
+					});
+
 				} else {
 					System.out.println("没有明确数据");
+				}
+				/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+
+
+				// *** 生成商品静态详情页
+				for (final Long goodsId : ids) {
+					jmsTemplate.send(topicPageDestination,
+							new MessageCreator() {
+
+								@Override
+								public Message createMessage(Session session) throws JMSException {
+									return session.createTextMessage(goodsId + "");
+								}
+							});
 				}
 			}
 
@@ -154,7 +217,7 @@ public class GoodsController {
 
 	/**
 	 * 静态生成页 (测试)
-	 */
+
 	@RequestMapping("/genHtml")
 	public String genHtml(Long goodsId) {
         boolean flag = itemPageService.genIteHtml(goodsId);
@@ -165,5 +228,6 @@ public class GoodsController {
             return "500 generate failure!";
         }
 	}
+	 */
 
 }

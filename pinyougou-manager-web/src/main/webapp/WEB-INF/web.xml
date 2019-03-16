@@ -3,6 +3,7 @@
          xmlns="http://java.sun.com/xml/ns/javaee"
          xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd"
          version="2.5">
+
     <!-- 解决post乱码 -->
     <filter>
         <filter-name>CharacterEncodingFilter</filter-name>
@@ -36,14 +37,17 @@
         <url-pattern>*.do</url-pattern>
     </servlet-mapping>
 
-    <!-- Spring Security 安全框架的配置加载文件的监听器以及/过滤器 -->
+    <!-- Spring Security 安全框架的配置加载文件的监听器 -->
+    <!-- 以及其他Spring 家族其他配置文件的加载 -->
     <context-param>
         <param-name>contextConfigLocation</param-name>
-        <param-value>classpath:spring/spring-security.xml</param-value>
+        <param-value>classpath:spring/spring-*.xml</param-value>
     </context-param>
     <listener>
         <listener-class>org.springframework.web.context.ContextLoaderListener</listener-class>
     </listener>
+
+    <!--  Spring Security 的过滤器 -->
     <filter>
         <!-- springSecurityFilterChain这个名字不能改！底层写好了 -->
         <filter-name>springSecurityFilterChain</filter-name>
