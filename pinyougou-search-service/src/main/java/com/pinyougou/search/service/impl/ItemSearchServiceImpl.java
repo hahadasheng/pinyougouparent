@@ -27,6 +27,51 @@ public class ItemSearchServiceImpl implements ItemSearchService {
     @Autowired
     private RedisTemplate redisTemplate;
 
+    /**
+     * 向solr中导入数据
+     */
+    @Override
+    public void importList(List list) {
+        solrTemplate.saveBeans(list);
+        solrTemplate.commit();
+    }
+
+    /**
+     * 在solr中删除数据
+     */
+    @Override
+    public void deleteByGoodsIds(List goodsIdList) {
+        Query query = new SimpleQuery();
+        Criteria criteria = new Criteria("item_goodsid").in(goodsIdList);
+        query.addCriteria(criteria);
+        solrTemplate.delete(query);
+        solrTemplate.commit();
+    }
+
+    /** 从Redis中 根据 商品分类 查询 模板id -> 品牌/规格 列表 */
+    private Map searchBrandAndSpecList(String category) {
+        // 存放查询结果的集合
+        Map map = new HashMap();
+
+        // 获取模板ID
+        Long typeId = (Long)redisTemplate.boundHashOps("itemCat").get(category);
+
+        // 为了提高容错性，这里加一个判断
+        if (typeId != null) {
+
+            // 根据模板ID查询品牌列表
+            List brandList = (List) redisTemplate.boundHashOps("brandList").get(typeId);
+            map.put("brandList", brandList);
+
+            // 根据模板ID查询规格列表
+            List specList = (List) redisTemplate.boundHashOps("specList").get(typeId);
+
+            map.put("specList", specList);
+        }
+
+        return map;
+    }
+
     /** 搜索 */
     @Override
     public Map<String, Object> search(Map searchMap) {
@@ -55,28 +100,6 @@ public class ItemSearchServiceImpl implements ItemSearchService {
         }
 
         return map;
-    }
-
-    /**
-     * 向solr中导入数据
-     */
-    @Override
-    public void importList(List list) {
-        solrTemplate.saveBeans(list);
-        solrTemplate.commit();
-    }
-
-    /**
-     * 在solr中删除数据
-     */
-    @Override
-    public void deleteByGoodsIds(List goodsIdList) {
-        System.out.println("删除商品ID" + goodsIdList);
-        Query query = new SimpleQuery();
-        Criteria criteria = new Criteria("item_goodsid").in(goodsIdList);
-        query.addCriteria(criteria);
-        solrTemplate.delete(query);
-        solrTemplate.commit();
     }
 
     /** 【很繁琐】按照关键字查询 复制域item_keywords 并 高亮显示 标题域item_title */
@@ -178,15 +201,8 @@ public class ItemSearchServiceImpl implements ItemSearchService {
             }
         }
 
-
-
-
-
-
         /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-
 
         // 3. 设置高亮的域，可能有很多个域。可以通过链式编程添加域
         HighlightOptions highlightOptions = new HighlightOptions().addField("item_title");
@@ -196,7 +212,6 @@ public class ItemSearchServiceImpl implements ItemSearchService {
         highlightOptions.setSimplePostfix("</em>");
         // 将高亮配置 赋予 给查询对象
         query.setHighlightOptions(highlightOptions);
-
 
         // 4. 按照关键字进行查询 获取返回结果
         HighlightPage<TbItem> page = solrTemplate.queryForHighlightPage(query, TbItem.class);
@@ -216,7 +231,6 @@ public class ItemSearchServiceImpl implements ItemSearchService {
                 System.out.println(finalResult);
             }
              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
 
             // 获取原实体类，将高亮的的域的内容封装到 原实体类中
             // h.getEntity() 与 page.getContent() 获取的是同一个对象！
@@ -249,13 +263,11 @@ public class ItemSearchServiceImpl implements ItemSearchService {
         Query query = new SimpleQuery();
 
         // 2、按照关键字进行查询
-        Criteria criteria = new Criteria("item_keywords")
-                .is(searchMap.get("keywords"));
+        Criteria criteria = new Criteria("item_keywords").is(searchMap.get("keywords"));
         query.addCriteria(criteria);
 
         // 3、设置分组选项；支持链式编程，可以添加 多个分组 的条件，得到多个分组的结果
-        GroupOptions groupOptions = new GroupOptions()
-                .addGroupByField("item_category");
+        GroupOptions groupOptions = new GroupOptions().addGroupByField("item_category");
         query.setGroupOptions(groupOptions);
 
         // 4、得到查询分组页
@@ -281,27 +293,5 @@ public class ItemSearchServiceImpl implements ItemSearchService {
         return list;
     }
 
-    /** 从Redis中 根据 商品分类 查询 模板id -> 品牌/规格 列表 */
-    private Map searchBrandAndSpecList(String category) {
-        // 存放查询结果的集合
-        Map map = new HashMap();
 
-        // 获取模板ID
-        Long typeId = (Long)redisTemplate.boundHashOps("itemCat").get(category);
-
-        // 为了提高容错性，这里加一个判断
-        if (typeId != null) {
-
-            // 根据模板ID查询品牌列表
-            List brandList = (List) redisTemplate.boundHashOps("brandList").get(typeId);
-            map.put("brandList", brandList);
-
-            // 根据模板ID查询规格列表
-            List specList = (List) redisTemplate.boundHashOps("specList").get(typeId);
-
-            map.put("specList", specList);
-        }
-
-        return map;
-    }
 }

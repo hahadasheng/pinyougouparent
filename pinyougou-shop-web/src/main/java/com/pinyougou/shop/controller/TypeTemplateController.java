@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * controller
+ * com.lingting.controller
  * @author Administrator
  *
  */

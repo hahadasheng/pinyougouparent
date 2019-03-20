@@ -11,7 +11,7 @@ import com.pinyougou.sellergoods.service.SpecificationOptionService;
 import entity.PageResult;
 import entity.Result;
 /**
- * controller
+ * com.lingting.controller
  * @author Administrator
  *
  */

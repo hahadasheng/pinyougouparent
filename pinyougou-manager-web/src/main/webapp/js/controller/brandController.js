@@ -2,9 +2,9 @@
 app.controller("brandController", function ($scope, $controller, brandService) {
 
     /*
-    加载公共的 controller,
+    加载公共的 com.lingting.controller,
     {$scope:$scope} 表示将两个控制器的作用域联通起来，
-    让此作用域能直接访问公共的 controller!
+    让此作用域能直接访问公共的 com.lingting.controller!
     【注意】：在html页面上要引用 公共的controller,否则找不到资源！
     */
     $controller("baseController", {$scope:$scope});

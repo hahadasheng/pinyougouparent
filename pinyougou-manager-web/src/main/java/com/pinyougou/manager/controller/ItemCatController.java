@@ -13,7 +13,7 @@ import com.pinyougou.sellergoods.service.ItemCatService;
 import entity.PageResult;
 import entity.Result;
 /**
- * controller
+ * com.lingting.controller
  * @author Administrator
  *
  */

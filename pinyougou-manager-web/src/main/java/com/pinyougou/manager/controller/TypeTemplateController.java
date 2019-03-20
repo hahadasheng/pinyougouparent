@@ -12,7 +12,7 @@ import com.pinyougou.sellergoods.service.TypeTemplateService;
 import entity.PageResult;
 import entity.Result;
 /**
- * controller
+ * com.lingting.controller
  * @author Administrator
  *
  */

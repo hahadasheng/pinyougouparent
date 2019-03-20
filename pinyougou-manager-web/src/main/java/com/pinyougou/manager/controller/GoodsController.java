@@ -24,7 +24,7 @@ import javax.jms.Message;
 import javax.jms.Session;
 
 /**
- * controller
+ * com.lingting.controller
  * @author Administrator
  *
  */

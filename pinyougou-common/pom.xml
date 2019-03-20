@@ -35,6 +35,14 @@
             <artifactId>spring-data-redis</artifactId>
             <version>1.7.2.RELEASE</version>
         </dependency>
+
+        <!-- 需要使用原生的ServletAPI -->
+        <dependency>
+            <groupId>javax.servlet</groupId>
+            <artifactId>servlet-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
     </dependencies>
 
 </project>

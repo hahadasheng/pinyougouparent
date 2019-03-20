@@ -11,7 +11,7 @@ import com.pinyougou.content.service.ContentCategoryService;
 import entity.PageResult;
 import entity.Result;
 /**
- * controller
+ * com.lingting.controller
  * @author Administrator
  *
  */
