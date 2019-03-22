@@ -7,12 +7,14 @@ import com.pinyougou.pojogroup.Cart;
 import entity.Result;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import utils.CookieUtil;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.util.Arrays;
 import java.util.List;
 
 @RestController
@@ -77,7 +79,24 @@ public class CartController {
      * @return
      */
     @RequestMapping("/addGoodsToCartList")
+    // @CrossOrigin(origins = {"http://localhost:9106", "http://localhost:9105"}, allowCredentials = "true")
     private Result addGoodsToCartList(Long itemId, Integer num) {
+
+        /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+        // 设置允许跨域请求，指定可以跨域访问的域，可以进行逻辑处理访问指定的【域集合】;
+         final String[] ALLOW_DOMAIN = {"http://localhost:9106", "http://localhost:9105"};
+         String originHeader = request.getHeader("Origin");
+         if (Arrays.asList(ALLOW_DOMAIN).contains(originHeader)) {
+             response.setHeader("Access-Control-Allow-Origin", originHeader);
+         }
+
+        // 设置允许携带Cookie；如果如此设置，跨域设置就不能设置为通配符 *
+         response.setHeader("Access-Control-Allow-Credentials", "true");
+        // SpringMVC 4.2+ 可以使用注解实现跨域请求 @CrossOrigin 【可以设置多个】
+
+        /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+
         // 获取登录人账号，判断是否登陆
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
 
