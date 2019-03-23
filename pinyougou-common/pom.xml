@@ -43,6 +43,12 @@
             <scope>provided</scope>
         </dependency>
 
+        <!-- HttpClient -->
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpclient</artifactId>
+        </dependency>
+
     </dependencies>
 
 </project>
