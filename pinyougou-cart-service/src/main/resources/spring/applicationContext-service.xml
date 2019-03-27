@@ -14,7 +14,7 @@
 	<!-- 访问 dubbo 占用的本地端口 -->
     <dubbo:protocol name="dubbo" port="20887"/>
 	<dubbo:application name="pinyougou-cart-service"/>
-    <dubbo:registry address="zookeeper://192.168.25.135:2181"/>
+    <!--<dubbo:registry address="zookeeper://192.168.25.135:2181"/>-->
     <dubbo:annotation package="com.pinyougou.cart.service.impl" />
 
 </beans>

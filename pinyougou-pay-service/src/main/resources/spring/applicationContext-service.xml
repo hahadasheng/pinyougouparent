@@ -15,7 +15,7 @@
     <dubbo:protocol name="dubbo" port="20880"/>
 	<dubbo:application name="pinyougou-pay-service"/>
 	<!-- 2181是访问服务器的端口！ -->
-    <dubbo:registry address="zookeeper://192.168.25.135:2181"/>
+    <!--<dubbo:registry address="zookeeper://192.168.25.135:2181"/>-->
     <dubbo:annotation package="com.pinyougou.pay.service.impl" />
 
 </beans>

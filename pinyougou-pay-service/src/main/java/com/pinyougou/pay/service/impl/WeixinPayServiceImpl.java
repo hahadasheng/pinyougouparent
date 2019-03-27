@@ -66,20 +66,17 @@ public class WeixinPayServiceImpl implements WeixinPayService {
 
         try {
             // 2. 生成要发送的xml
+            /*
             String xmlParam = WXPayUtil.generateSignedXml(param, partnerKey);
-            System.out.println(xmlParam);
-
             HttpClient client = new HttpClient("https://api.mch.weixin.qq.com/pay/unifiedorder");
             client.setHttps(true);
             client.setXmlParam(xmlParam);
             client.post();
-
-            // 3. 获得结果
             String result = client.getContent();
-
-            // 封装返回地址
             Map<String, String> resultMap = WXPayUtil.xmlToMap(result);
-            System.out.println("返回的结果： \n" + resultMap);
+            */
+
+            Map<String, String> resultMap = sendOrderToWeiChat(param, "https://api.mch.weixin.qq.com/pay/unifiedorder");
 
             Map<String, String> map = new HashMap<>();
 
@@ -95,6 +92,8 @@ public class WeixinPayServiceImpl implements WeixinPayService {
             // 订单号
             map.put("out_trade_no", out_trade_no);
 
+            map.putAll(resultMap);
+
             return map;
 
         } catch (Exception e) {
@@ -104,7 +103,7 @@ public class WeixinPayServiceImpl implements WeixinPayService {
     }
 
     /**
-     * 查询支付状态：每隔3秒轮询
+     * 查询支付状态：
      * @param out_trade_no
      * @return
      */
@@ -124,10 +123,43 @@ public class WeixinPayServiceImpl implements WeixinPayService {
         // 随机字符串
         param.put("nonce_str", WXPayUtil.generateNonceStr());
 
-        String url = "https://api.mch.weixin.qq.com/pay/orderquery";
+        // 向微信查询订单
+        return sendOrderToWeiChat(param, "https://api.mch.weixin.qq.com/pay/orderquery");
+    }
 
+    /**
+     * 关闭支付 告诉微信关闭 订单
+     * @param out_trade_no
+     * @return
+     */
+    @Override
+    public Map closePay(String out_trade_no) {
+        Map param = new HashMap();
+
+        // 公众号ID
+        param.put("appid", appid);
+
+        // 商户号
+        param.put("mch_id", partner);
+
+        // 订单号【需要被关闭的订单号】
+        param.put("out_trade_no", out_trade_no);
+
+        // 随机字符串
+        param.put("nonce_str", WXPayUtil.generateNonceStr());
+
+        // 向微信申请取消订单
+        return sendOrderToWeiChat(param, "https://api.mch.weixin.qq.com/pay/closeorder");
+    }
+
+    /**
+     * 向微信发送 订单 查询/取消
+     * @param param
+     * @param url
+     * @return
+     */
+    private Map sendOrderToWeiChat(Map param, String url) {
         try {
-
             String xmlParam = WXPayUtil.generateSignedXml(param, partnerKey);
             HttpClient client = new HttpClient(url);
 
@@ -138,10 +170,13 @@ public class WeixinPayServiceImpl implements WeixinPayService {
             String result = client.getContent();
 
             Map<String, String> map = WXPayUtil.xmlToMap(result);
+
+            /* ~~~~~~~~~~~~~~~~~~~~~~ */
+            System.out.println(xmlParam);
             System.out.println(map);
+            /* ~~~~~~~~~~~~~~~~~~~~~~ */
 
             return map;
-
         } catch (Exception e) {
             e.printStackTrace();
             return null;

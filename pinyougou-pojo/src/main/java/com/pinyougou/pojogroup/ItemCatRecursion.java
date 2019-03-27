@@ -8,10 +8,16 @@ import java.util.List;
 /** 封装产品分类表，递归查询！ */
 public class ItemCatRecursion implements Serializable {
 
-    // 记录父节点的数据
+    /** 记录父节点的数据 */
     private TbItemCat itemCat;
-    // 记录子节点的集合
+
+    /** 记录子节点的集合 */
     private List<ItemCatRecursion> childern;
+
+    /** 下面是get/set方和构造方法，略 */
+
+
+
 
     public ItemCatRecursion() {
     }

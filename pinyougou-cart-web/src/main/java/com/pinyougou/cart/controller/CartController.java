@@ -80,18 +80,20 @@ public class CartController {
      */
     @RequestMapping("/addGoodsToCartList")
     // @CrossOrigin(origins = {"http://localhost:9106", "http://localhost:9105"}, allowCredentials = "true")
-    private Result addGoodsToCartList(Long itemId, Integer num) {
+    public Result addGoodsToCartList(Long itemId, Integer num) {
 
         /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
         // 设置允许跨域请求，指定可以跨域访问的域，可以进行逻辑处理访问指定的【域集合】;
          final String[] ALLOW_DOMAIN = {"http://localhost:9106", "http://localhost:9105"};
          String originHeader = request.getHeader("Origin");
-         if (Arrays.asList(ALLOW_DOMAIN).contains(originHeader)) {
-             response.setHeader("Access-Control-Allow-Origin", originHeader);
+         if (!Arrays.asList(ALLOW_DOMAIN).contains(originHeader)) {
+             return new Result(false, "不被允许的跨域请求！");
          }
 
+        response.setHeader("Access-Control-Allow-Origin", originHeader);
+
         // 设置允许携带Cookie；如果如此设置，跨域设置就不能设置为通配符 *
-         response.setHeader("Access-Control-Allow-Credentials", "true");
+        response.setHeader("Access-Control-Allow-Credentials", "true");
         // SpringMVC 4.2+ 可以使用注解实现跨域请求 @CrossOrigin 【可以设置多个】
 
         /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */

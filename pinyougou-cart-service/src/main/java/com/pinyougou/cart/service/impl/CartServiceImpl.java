@@ -91,20 +91,108 @@ public class CartServiceImpl implements CartService {
                             orderItem.getNum() * orderItem.getPrice().doubleValue()));
                 }
 
-                // 如果数量操作后小于等于0，则删除
-                if (orderItem.getNum() <= 0) {
-                    // 移除商品明细
-                    cart.getOrderItemList().remove(orderItem);
-                }
+//                // 如果数量操作后小于等于0，则删除
+//                if (orderItem.getNum() <= 0) {
+//                    // 移除商品明细
+//                    cart.getOrderItemList().remove(orderItem);
+//                }
+//
+//                // 如果商品明细列表为 0， 则将cart移除
+//                if (cart.getOrderItemList().size() == 0) {
+//                    cartList.remove(cart);
+//                }
+            }
 
-                // 如果商品明细列表为 0， 则将cart移除
-                if (cart.getOrderItemList().size() == 0) {
-                    cartList.remove(cart);
-                }
+            // 如果数量操作后小于等于0，则删除
+            if (orderItem.getNum() <= 0) {
+                // 移除商品明细
+                cart.getOrderItemList().remove(orderItem);
+            }
+
+            // 如果商品明细列表为 0， 则将cart移除
+            if (cart.getOrderItemList().size() == 0) {
+                cartList.remove(cart);
             }
         }
 
         return cartList;
+    }
+
+    /**
+     * 合并购物车
+     * @param cartList1
+     * @param cartList2
+     * @return
+     */
+    @Override
+    public List<Cart> mergeCartList(List<Cart> cartList1, List<Cart> cartList2) {
+
+        // 1. 优化1
+        if (cartList1 == null || cartList1.size() == 0) {
+            return cartList2;
+        }
+
+        if (cartList2 == null || cartList2.size() == 0) {
+            return cartList1;
+        }
+
+        // 2. 优化
+        List<Cart> bigCart = cartList1.size() > cartList2.size() ? cartList1 : cartList2;
+        List<Cart> smallCart = cartList1.size() < cartList2.size() ? cartList1 : cartList2;
+
+        // 循环遍历小的购物车列表
+        for (Cart sellerS : smallCart) {
+
+            // 标记大购物车中是否有小的购物车
+            boolean haveSeller = false;
+
+            // 循环遍历大的购物车
+            for (Cart sellerB : bigCart) {
+
+                // 如果大购物车 中存在 小购物车 的商家购物车；
+                if (sellerB.getSellerId().equals(sellerS.getSellerId())) {
+
+                    // 标记含有该小购物车
+                    haveSeller = true;
+
+                    // 遍历 小购物车列表商家中 的商品列表
+                    for (TbOrderItem orderS : sellerS.getOrderItemList()) {
+
+                        // 标记 大购物车列表的商家 是否含有该商品
+                        boolean haveOrder = false;
+
+                        // 遍历 大购物车列表商家 中的商品
+                        for (TbOrderItem orderB : sellerB.getOrderItemList()) {
+                            // 如果另个列表中含有相同商品，将两个商品合并
+                            if (orderB.getItemId().equals(orderS.getItemId())) {
+                                haveOrder = true;
+                                orderB.setNum(orderB.getNum() + orderS.getNum());
+                                orderB.setTotalFee(
+                                        new BigDecimal(orderB.getTotalFee().doubleValue() +
+                                                orderS.getTotalFee().doubleValue())
+                                        );
+                            }
+                        }
+
+                        // 大购物车列表的 商家下的商品遍历完后，发现没有 小购物车列表 的 商家 的当前 商品，将
+                        if (!haveOrder) {
+                            sellerB.getOrderItemList().add(orderS);
+                        }
+                    }
+
+                    // 不需要继续判断，因为已经有了相同的商家，不会存在一个列表中存在相同的商家
+                    continue;
+                }
+            }
+
+            // 大购物车遍历完之后，如果发现不存在该小购物车
+            if (!haveSeller) {
+                // 如果不存在，直接将小购物车加入大购物车
+                bigCart.add(sellerS);
+            }
+        }
+
+        return bigCart;
     }
 
     /**
@@ -132,25 +220,7 @@ public class CartServiceImpl implements CartService {
         redisTemplate.boundHashOps("cartList").put(username, cartList);
     }
 
-    /**
-     * 合并购物车
-     * @param cartList1
-     * @param cartList2
-     * @return
-     */
-    @Override
-    public List<Cart> mergeCartList(List<Cart> cartList1, List<Cart> cartList2) {
-        for (Cart cart : cartList2) {
-            for (TbOrderItem orderItem : cart.getOrderItemList()) {
-                cartList1 = addGoodsToCartList(
-                        cartList1,
-                        orderItem.getItemId(),
-                        orderItem.getNum());
-            }
-        }
 
-        return cartList1;
-    }
 
     /**
      * 根据商家ID查询购物车对象

@@ -118,24 +118,22 @@ public class ItemCatController {
 		return itemCatService.findByParentId(parentId);
 	}
 
+
+
 	/** 【练习】递归查询 item_cat 数结构表  */
 	@RequestMapping("/findAllRecursion")
 	public ItemCatRecursion findAllRecursion(Long id) {
-
 		ItemCatRecursion god = new ItemCatRecursion();
 		god.setChildern(findAllChildren(id));
 		return god;
 	}
 
 	private List<ItemCatRecursion> findAllChildren(Long parentId) {
-
-		// 获取所有的子节点
+		// 【根据parentId获取所有的子节点】
 		List<TbItemCat> byParentId = itemCatService.findByParentId(parentId);
 
 		// 递归结束条件
-		if (byParentId.size() == 0) {
-			return null;
-		}
+		if (byParentId.size() == 0) { return null; }
 
 		// 封装子节点
 		List<ItemCatRecursion> childrenItems = new ArrayList<>();
@@ -148,10 +146,8 @@ public class ItemCatController {
 
 			// 【递归】查询当前子节点对象 下面的 子节点
 			itemCatRecursion.setChildern(findAllChildren(itemCat.getId()));
-
 			childrenItems.add(itemCatRecursion);
 		}
-
 		return childrenItems;
 	}
 }

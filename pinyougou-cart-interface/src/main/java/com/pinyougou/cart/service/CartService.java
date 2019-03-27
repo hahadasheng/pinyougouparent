@@ -1,5 +1,7 @@
 package com.pinyougou.cart.service;
 
+import com.pinyougou.pojo.TbItem;
+import com.pinyougou.pojo.TbOrderItem;
 import com.pinyougou.pojogroup.Cart;
 
 import java.util.List;
