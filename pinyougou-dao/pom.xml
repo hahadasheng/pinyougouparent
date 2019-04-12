@@ -49,6 +49,8 @@
         </dependency>
     </dependencies>
 
+
+
     <!-- 默认使用开发环境的数据库配置 dev -->
     <properties>
         <!-- 使用 profiles 中 profile 的 id 为dev的配置  -->
